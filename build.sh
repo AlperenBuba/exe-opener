@@ -28,4 +28,7 @@ fi
 
 pyinstaller --onefile --windowed --name "EXEOpener" $ADD_DATA main.py
 
-echo "[+] Done: dist/EXEOpener"
+chmod +x dist/EXEOpener
+tar -czf dist/EXEOpener.tar.gz -C dist EXEOpener
+
+echo "[+] Done: dist/EXEOpener.tar.gz"
