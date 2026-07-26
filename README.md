@@ -1,4 +1,4 @@
-# 🍷 EXE Opener — Wine Launcher
+# 🍷 EXE Opener
 
 > 🐧 Linux üzerinde Windows `.exe` dosyalarını **Wine** ile çalıştırmak için basit ve kullanışlı grafik arayüz.
 
