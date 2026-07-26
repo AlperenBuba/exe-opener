@@ -1,30 +1,85 @@
 import os
 import sys
 import json
+import socket
 import subprocess
-import importlib
 import threading
+import shutil
+import platform
+
+IS_WINDOWS = platform.system() == "Windows"
+
+LOCK_PORT = 43987
+
+already = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+try:
+    already.bind(("127.0.0.1", LOCK_PORT))
+except OSError:
+    print("EXEOpener zaten çalışıyor.")
+    sys.exit(1)
+
+if getattr(sys, 'frozen', False):
+    for var, sub in [('TCL_LIBRARY', 'tcl'), ('TK_LIBRARY', 'tk')]:
+        p = os.path.join(sys._MEIPASS, sub)
+        if os.path.isdir(p):
+            os.environ[var] = p
+
+
+def apt_install(packages):
+    if IS_WINDOWS:
+        return False
+    try:
+        subprocess.run(
+            ["pkexec", "apt", "install", "-y"] + packages,
+            check=True, timeout=120
+        )
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
 
 try:
     import tkinter as tk
     from tkinter import filedialog, messagebox
 except ImportError:
-    subprocess.check_call(["sudo", "apt", "install", "-y", "python3-tk"])
-    import tkinter as tk
-    from tkinter import filedialog, messagebox
-
-import shutil
+    if IS_WINDOWS:
+        print("Hata: tkinter bulunamadı. Python'unuz tkinter içermiyor.")
+        sys.exit(1)
+    print("[*] python3-tk kurulu değil, kuruluyor...")
+    if apt_install(["python3-tk"]):
+        import tkinter as tk
+        from tkinter import filedialog, messagebox
+    else:
+        print("Hata: python3-tk kurulamadı. Elle kurun: sudo apt install python3-tk")
+        sys.exit(1)
 
 try:
     from tkinterdnd2 import DND_FILES, TkinterDnD
     HAS_DND = True
 except ImportError:
     try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "tkinterdnd2"])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "tkinterdnd2", "--break-system-packages"])
         from tkinterdnd2 import DND_FILES, TkinterDnD
         HAS_DND = True
     except:
         HAS_DND = False
+
+if not IS_WINDOWS and not shutil.which("wine"):
+    root = tk.Tk()
+    root.withdraw()
+    ret = messagebox.askyesno(
+        "Wine Gerekli",
+        "Wine sisteminizde bulunamadı. Kurmak ister misiniz?"
+    )
+    if ret:
+        if apt_install(["wine"]):
+            messagebox.showinfo("Başarılı", "Wine kuruldu.")
+        else:
+            messagebox.showerror("Hata", "Wine kurulamadı.")
+            sys.exit(1)
+    else:
+        sys.exit(1)
+    root.destroy()
 
 CONFIG_DIR = os.path.expanduser("~/.config/exe-opener")
 RECENT_FILE = os.path.join(CONFIG_DIR, "recent.json")
@@ -49,32 +104,6 @@ def save_recent(path):
         json.dump(recent, f)
 
 
-def check_and_install_wine():
-    if shutil.which("wine"):
-        return True
-    temp = tk.Tk()
-    temp.withdraw()
-    ret = messagebox.askyesno(
-        "Wine Kurulumu",
-        "Wine sisteminizde bulunamadı. Kurmak ister misiniz?"
-    )
-    if not ret:
-        temp.destroy()
-        return False
-    try:
-        subprocess.run(["sudo", "apt", "install", "-y", "wine"], check=True)
-    except subprocess.CalledProcessError:
-        messagebox.showerror("Hata", "Wine kurulumu başarısız oldu.")
-        temp.destroy()
-        return False
-    temp.destroy()
-    return True
-
-
-if not check_and_install_wine():
-    sys.exit(1)
-
-
 if HAS_DND:
     root = TkinterDnD.Tk()
 else:
@@ -89,10 +118,6 @@ y = (root.winfo_screenheight() - H) // 2
 root.geometry(f"{W}x{H}+{x}+{y}")
 root.resizable(False, False)
 
-if HAS_DND:
-    root.drop_target_register(DND_FILES)
-    root.dnd_bind("<<Drop>>", lambda e: entry_var.set(e.data.strip("{}")))
-
 center = tk.Frame(root)
 center.pack(expand=True, pady=(20, 0))
 
@@ -102,6 +127,10 @@ entry_frame.pack()
 entry_var = tk.StringVar()
 entry = tk.Entry(entry_frame, textvariable=entry_var, width=35)
 entry.pack(side=tk.LEFT, padx=(0, 5))
+
+if HAS_DND:
+    root.drop_target_register(DND_FILES)
+    root.dnd_bind("<<Drop>>", lambda e: entry_var.set(e.data.strip("{}")))
 
 
 def select_file():
@@ -160,18 +189,24 @@ def open_exe():
     log_text.config(state="normal")
     log_text.delete("1.0", "end")
     log_text.config(state="disabled")
-    append_log(f"Çalıştırılıyor: wine {path}\n")
+
+    cmd = [path] if IS_WINDOWS else ["wine", path]
+    label = path if IS_WINDOWS else f"wine {path}"
+    append_log(f"Çalıştırılıyor: {label}\n")
 
     def run():
-        proc = subprocess.Popen(
-            ["wine", path],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1
-        )
-        for line in proc.stdout:
-            root.after(0, append_log, line)
+        try:
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+            for line in proc.stdout:
+                root.after(0, append_log, line)
+        except FileNotFoundError:
+            root.after(0, append_log, f"Hata: '{path}' bulunamadı veya çalıştırılamadı.\n")
 
     threading.Thread(target=run, daemon=True).start()
 

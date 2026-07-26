@@ -1,91 +1,81 @@
-# 🍷 EXE Opener
+# EXE Opener
 
-> 🐧 Linux üzerinde Windows `.exe` dosyalarını **Wine** ile çalıştırmak için basit ve kullanışlı grafik arayüz.
+Linux üzerinde Windows `.exe` dosyalarını Wine ile çalıştırmak için basit bir grafik arayüz. Sürükle-bırak, son açılanlar ve canlı log desteği sunar.
 
----
+## Özellikler
 
-## 📋 Platform Desteği
+- Wine ile `.exe` çalıştırma
+- Dosya seçici ile `.exe` seçme
+- Sürükle-bırak desteği (`tkinterdnd2`)
+- Son 10 dosya geçmişi
+- Canlı Wine çıktısı (siyah terminal benzeri panel)
+- Log kaydetme
+- Eksik bağımlılıkları PolicyKit (`pkexec`) ile grafiksel kurma
 
-| Platform | Durum |
-|----------|-------|
-| 🐧 Linux (Debian/Ubuntu) | ✅ Destekleniyor |
-| 🪟 Windows | ✅ Destekleniyor |
-| 🐍 Python | 3.8+ |
+## Platform Desteği
 
----
+| Platform | Çalıştırma | Derleme |
+|----------|-----------|---------|
+| Linux (Debian/Ubuntu) | ✅ `python3 main.py` | ✅ `build.sh` |
+| Windows | ✅ Doğrudan EXE çalıştırır (Wine'siz) | ❌ |
+| macOS | ❌ Test edilmedi | ❌ |
 
-## ✨ Özellikler
+## Gereksinimler
 
-- 🍷 **Wine otomatik kurulum** — Sisteminizde Wine yoksa kurulumu sizin yerinize yapar
-- 📂 **Dosya seçici** — `.exe` dosyanızı grafiksel olarak seçin
-- 🖱️ **Sürükle-bırak** — `.exe` dosyasını doğrudan pencereye bırakın
-- 🕘 **Son açılanlar** — Son 10 dosyayı hızla açın
-- 🖥️ **Canlı log paneli** — Wine çıktısını anlık olarak siyah terminalde görüntüleyin
-- 💾 **Log kaydet** — Paneldeki çıktıyı dosyaya kaydedin
+- Python 3.8+
+- Wine (Linux, yoksa script ilk çalışmada kurmayı önerir)
+- `python3-tk` (yoksa script otomatik kurar)
 
----
+## Kullanım
 
-## 🚀 Kullanım
-
-### 🐍 Kaynaktan çalıştırma
+### Kaynaktan çalıştırma
 
 ```bash
-git clone https://github.com/alperenmsl/exe-opener.git
-cd exe-opener
 python3 main.py
 ```
 
-### 📦 Derlenmiş sürüm
-
-#### 🐧 Linux için derleme
+### Linux için tek dosya binary derleme
 
 ```bash
-pip install pyinstaller
-pyinstaller --onefile --windowed main.py
+./build.sh
 # Çıktı: dist/EXEOpener
-sudo cp dist/linux/EXEOpener /usr/local/bin/exe-opener
 ```
 
-#### 🪟 Windows için derleme (Wine ile)
+Binary'i `/usr/local/bin/` gibi bir yola kopyalayıp sistem genelinde kullanabilirsiniz:
 
 ```bash
-wine python -m pip install pyinstaller
-wine python -m PyInstaller --onefile --windowed --name "EXEOpener" main.py
-# Çıktı: dist/windows/EXEOpener.exe
+sudo cp dist/EXEOpener /usr/local/bin/exe-opener
 ```
 
----
+`.exe` dosyalarını bu uygulamayla açmak için dosya ilişkilendirmesi yapabilirsiniz:
 
-## 🔧 Bağımlılıklar
+```bash
+# Linux (GNOME/KDE)
+xdg-mime default exe-opener.desktop application/x-ms-dos-executable
+```
 
-Program ilk çalıştırmada eksik bağımlılıkları **otomatik** olarak kurar:
+## Bağımlılıklar
 
-| Bileşen | Kaynak | Amaç |
-|---------|--------|------|
-| 🐍 `python3-tk` | `apt` | Grafik arayüz |
-| 📦 `tkinterdnd2` | `pip` | Sürükle-bırak desteği |
-| 🍷 `wine` | `apt` | EXE çalıştırma |
-| 🔨 `pyinstaller` | `pip` | Derleme (opsiyonel) |
+Program ilk çalıştırmada eksik bağımlılıkları otomatik olarak kurmayı dener:
 
----
+| Bileşen | Kaynak | Açıklama |
+|---------|--------|----------|
+| `python3-tk` | `apt` (pkexec ile) | Grafik arayüz |
+| `tkinterdnd2` | `pip` | Sürükle-bırak desteği |
+| `wine` | `apt` (pkexec ile) | EXE çalıştırma |
+| `pyinstaller` | `pip` | Derleme (opsiyonel) |
 
-## 📁 Proje Yapısı
+## Proje Yapısı
 
 ```
 exe-opener/
-├── 🐍 main.py            — Ana uygulama dosyası
-├── 📘 README.md          — Bu dosya
-├── 🚫 .gitignore
-├── 🐚 build.sh           — Linux derleme betiği
-└── 📦 dist/
-    ├── 🐧 linux/
-    │   └── EXEOpener     — Linux çalıştırılabiliri
-    └── 🪟 windows/
-        └── EXEOpener.exe — Windows çalıştırılabiliri
+├── main.py              — Ana uygulama
+├── build.sh             — Derleme betiği
+├── README.md            — Bu dosya
+├── LICENSE              — MIT lisansı
+└── .gitignore
 ```
 
----
+## Lisans
 
-## 📄 Lisans
-
-**MIT** — İstediğiniz gibi kullanın, değiştirin, dağıtın. 🎉
+MIT
